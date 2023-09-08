@@ -36,10 +36,6 @@ View data
 
 glimpse(dat)
 
-# time <- function(x) {
-#   ((x/86400000) + as.Date("1970-01-01")) - (4/24)
-# }
-
 dat2 <- dat %>% 
           mutate(datetime = as.POSIXct((timestamp/1000), origin = "1970-01-01"),
                  date = as.Date(datetime)) %>% 
@@ -51,6 +47,7 @@ dat2 <- dat %>%
 ```
 
 ```{r}
+#| label: plot-fxn
 plot1 <- function(param, axis_title){
   ggplot(dat2, aes(x = date, y = {{param}})) + 
     geom_line() +
@@ -64,6 +61,8 @@ plot1 <- function(param, axis_title){
 ```
 
 ```{r}
+#| label: make-plots
+
 at <- plot1(param = air_temperature_celsius, axis_title = "Temperature \U00b0 C")
 bp <- plot1(param = barometric_pressure_hecto_pascals, axis_title = "Barometric Pressure (hPa)")
 rh <- plot1(param = relative_humidity_rh, axis_title = "Relative Humidity (%)")
@@ -71,6 +70,11 @@ ws <- plot1(param = wind_speed_average_m_s, axis_title = "Avg. Wind Speed (m/s)"
 ri <- plot1(param = rain_intensity_mm_h, axis_title = "Rain Intensity (mm/hr)")
 rd <- plot1(param = rain_duration_hours, axis_title = "Rain Duration (hrs)")
 wl <- plot1(param = water_level_meters, axis_title = "Water Level (m)")
+
+```
+
+```{r}
+#| label: pdf-output
 
 pdf(file = "output/data.pdf")
 
