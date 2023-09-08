@@ -1,0 +1,82 @@
+---
+title: "Request"
+format: html
+editor_options: 
+  chunk_output_type: console
+---
+
+## Message
+
+*"I am contacting you for data visualization assistance of our SenseStream monitoring station data. I have attached an export of last months data - ideally I would like to have a monthly graphical output similar to Kim's QC looping file for the EXO data.*
+
+*The parameters of interest are air temp, BP, RH, wind speed, wind direction, rain intensity, rain duration, and water level. The sensors collect data every 5 minutes, totaling almost 9,000 data points per parameter per month - so parameters are likely better represented as daily averages (temp, wind, BP, RH, rain?). The timestamp is in Epoch time, here is the conversion to standard time \[=((B2/86400000)+DATE(1970,1,1))-4/24\] .*
+
+*Please let me know if I can provide any additional clarifications or if this makes no sense (ha!) at all. I am happy to jump on a call to help talk through this as well."*
+
+# Load packages and data:
+
+```{r}
+#| label: setup-load
+library(here)
+library(tidyverse)
+library(janitor)
+library(lubridate)
+library(patchwork)
+
+dat <- read.csv(here('data', 'deployment_nws_1_sensor_0.csv')) %>% clean_names()
+
+```
+
+# Data wrangling and tidying
+
+View data
+
+```{r}
+#| label: data-wrangle
+
+glimpse(dat)
+
+# time <- function(x) {
+#   ((x/86400000) + as.Date("1970-01-01")) - (4/24)
+# }
+
+dat2 <- dat %>% 
+          mutate(datetime = as.POSIXct((timestamp/1000), origin = "1970-01-01"),
+                 date = as.Date(datetime)) %>% 
+          select(-timestamp) %>%  # remove the epoch time variable
+          group_by(date) %>% # group by date
+          summarise_if(is.numeric, mean, na.rm = TRUE) # get average for all numeric variables by day
+
+
+```
+
+```{r}
+plot1 <- function(param, axis_title){
+  ggplot(dat2, aes(x = date, y = {{param}})) + 
+    geom_line() +
+    scale_x_date(date_minor_breaks = "days") +
+    theme_bw() +
+    theme(axis.text = element_text(color = "black"),
+          panel.grid.minor.x = element_line(linetype = "dashed")) +
+    labs(x = "",
+         y = axis_title)
+}
+```
+
+```{r}
+at <- plot1(param = air_temperature_celsius, axis_title = "Temperature \U00b0 C")
+bp <- plot1(param = barometric_pressure_hecto_pascals, axis_title = "Barometric Pressure (hPa)")
+rh <- plot1(param = relative_humidity_rh, axis_title = "Relative Humidity (%)")
+ws <- plot1(param = wind_speed_average_m_s, axis_title = "Avg. Wind Speed (m/s)")
+ri <- plot1(param = rain_intensity_mm_h, axis_title = "Rain Intensity (mm/hr)")
+rd <- plot1(param = rain_duration_hours, axis_title = "Rain Duration (hrs)")
+wl <- plot1(param = water_level_meters, axis_title = "Water Level (m)")
+
+pdf(file = "output/data.pdf")
+
+multi <- (at + bp) / (rh + ws) / (ri + rd) / wl
+print(multi)
+
+dev.off()
+
+```
